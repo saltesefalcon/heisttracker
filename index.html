@@ -1,64 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Heist Inventory Tracker with Calendar Logs</title>
+  <meta charset="UTF-8" />
+  <title>Wine Inventory Tracker (Shared with Firebase)</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-    h2, h3 {
-      margin-top: 0;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-bottom: 20px;
-    }
-    table, th, td {
-      border: 1px solid #ccc;
-    }
-    th, td {
-      padding: 8px;
-      text-align: center;
-    }
-    .tabs button {
-      padding: 10px 20px;
-      margin-right: 10px;
-      cursor: pointer;
-    }
-    .tab-content {
-      display: none;
-    }
-    .tab-content.active {
-      display: block;
-    }
-    .calendar-nav {
-      margin-top: 30px;
-    }
-    .calendar-tab {
-      display: none;
-    }
-    .calendar-tab.active {
-      display: block;
-    }
-    .calendar-date {
-      text-align: left;
-      font-weight: bold;
-      padding: 8px;
-      background: #f0f0f0;
-    }
-    .log-entry {
-      text-align: left;
-      padding: 5px;
-      font-size: 14px;
-    }
+    body { font-family: Arial; padding: 20px; }
+    h2, h3 { margin-top: 0; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+    table, th, td { border: 1px solid #ccc; }
+    th, td { padding: 8px; text-align: center; }
+    .tabs button { padding: 10px 20px; margin-right: 10px; cursor: pointer; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .calendar-tab { display: none; }
+    .calendar-tab.active { display: block; }
+    .calendar-date { background: #f0f0f0; padding: 6px; font-weight: bold; }
+    .log-entry { padding: 5px; text-align: left; font-size: 14px; }
   </style>
 </head>
 <body>
 
-  <h1>Heist Inventory Tracker</h1>
+  <h1>Wine Inventory Tracker</h1>
 
   <!-- Tabs -->
   <div class="tabs">
@@ -66,19 +28,17 @@
     <button onclick="showTab('removals')">Remove Inventory</button>
   </div>
 
-  <!-- Tab: Deliveries -->
+  <!-- Deliveries Form -->
   <div id="deliveries" class="tab-content active">
     <h2>Add Deliveries</h2>
     <form onsubmit="updateInventory('add'); return false;">
-      <label>Date:
-        <input type="date" id="addDate" required>
-      </label>
+      <label>Date: <input type="date" id="addDate" required></label>
       <label>Location:
         <select id="addLocation">
-          <option value="location1">Ce Soir</option>
-          <option value="location2">Tulia</option>
-          <option value="location3">Beacon</option>
-          <option value="location4">Prohibition</option>
+          <option value="location1">Location 1</option>
+          <option value="location2">Location 2</option>
+          <option value="location3">Location 3</option>
+          <option value="location4">Location 4</option>
         </select>
       </label>
       <label>Product:
@@ -87,26 +47,22 @@
           <option value="rose">Rosé</option>
         </select>
       </label>
-      <label>Cases:
-        <input type="number" id="addCases" min="1" required>
-      </label>
+      <label>Cases: <input type="number" id="addCases" min="1" required></label>
       <button type="submit">Add</button>
     </form>
   </div>
 
-  <!-- Tab: Removals -->
+  <!-- Removals Form -->
   <div id="removals" class="tab-content">
     <h2>Remove Inventory</h2>
     <form onsubmit="updateInventory('remove'); return false;">
-      <label>Date:
-        <input type="date" id="removeDate" required>
-      </label>
+      <label>Date: <input type="date" id="removeDate" required></label>
       <label>Location:
         <select id="removeLocation">
-          <option value="location1">Ce Soir</option>
-          <option value="location2">Tulia</option>
-          <option value="location3">Beacon</option>
-          <option value="location4">Prohibition</option>
+          <option value="location1">Location 1</option>
+          <option value="location2">Location 2</option>
+          <option value="location3">Location 3</option>
+          <option value="location4">Location 4</option>
         </select>
       </label>
       <label>Product:
@@ -115,9 +71,7 @@
           <option value="rose">Rosé</option>
         </select>
       </label>
-      <label>Cases:
-        <input type="number" id="removeCases" min="1" required>
-      </label>
+      <label>Cases: <input type="number" id="removeCases" min="1" required></label>
       <button type="submit">Remove</button>
     </form>
   </div>
@@ -132,37 +86,37 @@
         <th>Rosé</th>
       </tr>
     </thead>
-    <tbody id="inventoryTable">
+    <tbody>
       <tr>
-        <td>Ce Soir</td>
+        <td>Location 1</td>
         <td id="inventory-location1-chardonnay">0</td>
         <td id="inventory-location1-rose">0</td>
       </tr>
       <tr>
-        <td>Tulia</td>
+        <td>Location 2</td>
         <td id="inventory-location2-chardonnay">0</td>
         <td id="inventory-location2-rose">0</td>
       </tr>
       <tr>
-        <td>Beacon</td>
+        <td>Location 3</td>
         <td id="inventory-location3-chardonnay">0</td>
         <td id="inventory-location3-rose">0</td>
       </tr>
       <tr>
-        <td>Prohibition</td>
+        <td>Location 4</td>
         <td id="inventory-location4-chardonnay">0</td>
         <td id="inventory-location4-rose">0</td>
       </tr>
     </tbody>
   </table>
 
-  <!-- Calendar Logs -->
-  <h2>Delivery & Removal Calendar Logs</h2>
-  <div class="calendar-nav">
-    <button onclick="showCalendar('location1')">Ce Soir</button>
-    <button onclick="showCalendar('location2')">Tulia</button>
-    <button onclick="showCalendar('location3')">Beacon</button>
-    <button onclick="showCalendar('location4')">Prohibition</button>
+  <!-- Calendar Log Navigation -->
+  <h2>Calendar Log</h2>
+  <div class="tabs">
+    <button onclick="showCalendar('location1')">Location 1</button>
+    <button onclick="showCalendar('location2')">Location 2</button>
+    <button onclick="showCalendar('location3')">Location 3</button>
+    <button onclick="showCalendar('location4')">Location 4</button>
   </div>
 
   <div id="calendar-location1" class="calendar-tab active"></div>
@@ -170,20 +124,52 @@
   <div id="calendar-location3" class="calendar-tab"></div>
   <div id="calendar-location4" class="calendar-tab"></div>
 
-  <script>
-    const inventory = {
-      location1: { chardonnay: 0, rose: 0 },
-      location2: { chardonnay: 0, rose: 0 },
-      location3: { chardonnay: 0, rose: 0 },
-      location4: { chardonnay: 0, rose: 0 }
+  <!-- Firebase SDK + App Logic -->
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyARAt4sNCfNTxCgha0OtCavebC-AdbHx8",
+      authDomain: "heist-inventory-tracker.firebaseapp.com",
+      databaseURL: "https://heist-inventory-tracker-default-rtdb.firebaseio.com",
+      projectId: "heist-inventory-tracker",
+      storageBucket: "heist-inventory-tracker.appspot.com",
+      messagingSenderId: "106905886803",
+      appId: "1:106905886803:web:a4ca869705130d13a9a6a6"
     };
 
-    const logs = {
-      location1: {},
-      location2: {},
-      location3: {},
-      location4: {}
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let inventory = {};
+    let logs = {};
+    const LOCATIONS = ['location1', 'location2', 'location3', 'location4'];
+
+    window.onload = () => {
+      onValue(ref(db, "inventory"), snapshot => {
+        inventory = snapshot.val() || initInventory();
+        updateDisplay();
+      });
+
+      onValue(ref(db, "logs"), snapshot => {
+        logs = snapshot.val() || initLogs();
+        LOCATIONS.forEach(renderCalendarLogs);
+      });
     };
+
+    function initInventory() {
+      const data = {};
+      LOCATIONS.forEach(loc => data[loc] = { chardonnay: 0, rose: 0 });
+      return data;
+    }
+
+    function initLogs() {
+      const data = {};
+      LOCATIONS.forEach(loc => data[loc] = {});
+      return data;
+    }
 
     function updateInventory(type) {
       const loc = document.getElementById(`${type}Location`).value;
@@ -191,50 +177,48 @@
       const cases = parseInt(document.getElementById(`${type}Cases`).value);
       const date = document.getElementById(`${type}Date`).value;
 
+      if (!logs[loc]) logs[loc] = {};
       if (!logs[loc][date]) logs[loc][date] = [];
 
-      let action = {
+      const action = {
         type: type,
         product: prod,
         cases: cases,
         resulting: null
       };
 
-      if (type === 'add') {
-        inventory[loc][prod] += cases;
-      } else {
-        inventory[loc][prod] = Math.max(0, inventory[loc][prod] - cases);
-      }
+      inventory[loc][prod] = type === 'add'
+        ? inventory[loc][prod] + cases
+        : Math.max(0, inventory[loc][prod] - cases);
 
       action.resulting = inventory[loc][prod];
       logs[loc][date].push(action);
 
-      updateDisplay();
-      renderCalendarLogs(loc);
+      set(ref(db, "inventory"), inventory);
+      set(ref(db, "logs"), logs);
+
       document.getElementById(`${type}Cases`).value = '';
     }
 
     function updateDisplay() {
-      for (let loc in inventory) {
-        for (let prod in inventory[loc]) {
-          document.getElementById(`inventory-${loc}-${prod}`).textContent = inventory[loc][prod];
-        }
-      }
+      LOCATIONS.forEach(loc => {
+        ['chardonnay', 'rose'].forEach(prod => {
+          document.getElementById(`inventory-${loc}-${prod}`).textContent = inventory[loc]?.[prod] ?? 0;
+        });
+      });
     }
 
     function renderCalendarLogs(location) {
       const container = document.getElementById(`calendar-${location}`);
       container.innerHTML = `<h3>${location.replace("location", "Location ")}</h3>`;
 
-      const dates = Object.keys(logs[location]).sort();
-
+      const dates = Object.keys(logs[location] || {}).sort();
       dates.forEach(date => {
-        const entries = logs[location][date];
         let html = `<div class="calendar-date">${date}</div>`;
-        entries.forEach(entry => {
+        logs[location][date].forEach(entry => {
           const verb = entry.type === 'add' ? 'Delivered' : 'Removed';
-          const prodName = entry.product === 'chardonnay' ? 'Chardonnay' : 'Rosé';
-          html += `<div class="log-entry">${verb} ${entry.cases} cases of ${prodName} → Total: ${entry.resulting}</div>`;
+          const wine = entry.product === 'chardonnay' ? 'Chardonnay' : 'Rosé';
+          html += `<div class="log-entry">${verb} ${entry.cases} cases of ${wine} → Total: ${entry.resulting}</div>`;
         });
         container.innerHTML += html;
       });
