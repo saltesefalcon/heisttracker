@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Heist Inventory Tracker with Calendar Logs</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    h2, h3 {
+      margin-top: 0;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th, td {
+      padding: 8px;
+      text-align: center;
+    }
+    .tabs button {
+      padding: 10px 20px;
+      margin-right: 10px;
+      cursor: pointer;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .calendar-nav {
+      margin-top: 30px;
+    }
+    .calendar-tab {
+      display: none;
+    }
+    .calendar-tab.active {
+      display: block;
+    }
+    .calendar-date {
+      text-align: left;
+      font-weight: bold;
+      padding: 8px;
+      background: #f0f0f0;
+    }
+    .log-entry {
+      text-align: left;
+      padding: 5px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Heist Inventory Tracker</h1>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button onclick="showTab('deliveries')">Add Deliveries</button>
+    <button onclick="showTab('removals')">Remove Inventory</button>
+  </div>
+
+  <!-- Tab: Deliveries -->
+  <div id="deliveries" class="tab-content active">
+    <h2>Add Deliveries</h2>
+    <form onsubmit="updateInventory('add'); return false;">
+      <label>Date:
+        <input type="date" id="addDate" required>
+      </label>
+      <label>Location:
+        <select id="addLocation">
+          <option value="location1">Ce Soir</option>
+          <option value="location2">Tulia</option>
+          <option value="location3">Beacon</option>
+          <option value="location4">Prohibition</option>
+        </select>
+      </label>
+      <label>Product:
+        <select id="addProduct">
+          <option value="chardonnay">Chardonnay</option>
+          <option value="rose">Rosé</option>
+        </select>
+      </label>
+      <label>Cases:
+        <input type="number" id="addCases" min="1" required>
+      </label>
+      <button type="submit">Add</button>
+    </form>
+  </div>
+
+  <!-- Tab: Removals -->
+  <div id="removals" class="tab-content">
+    <h2>Remove Inventory</h2>
+    <form onsubmit="updateInventory('remove'); return false;">
+      <label>Date:
+        <input type="date" id="removeDate" required>
+      </label>
+      <label>Location:
+        <select id="removeLocation">
+          <option value="location1">Ce Soir</option>
+          <option value="location2">Tulia</option>
+          <option value="location3">Beacon</option>
+          <option value="location4">Prohibition</option>
+        </select>
+      </label>
+      <label>Product:
+        <select id="removeProduct">
+          <option value="chardonnay">Chardonnay</option>
+          <option value="rose">Rosé</option>
+        </select>
+      </label>
+      <label>Cases:
+        <input type="number" id="removeCases" min="1" required>
+      </label>
+      <button type="submit">Remove</button>
+    </form>
+  </div>
+
+  <!-- Inventory Table -->
+  <h2>Current Inventory (Cases)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Location</th>
+        <th>Chardonnay</th>
+        <th>Rosé</th>
+      </tr>
+    </thead>
+    <tbody id="inventoryTable">
+      <tr>
+        <td>Ce Soir</td>
+        <td id="inventory-location1-chardonnay">0</td>
+        <td id="inventory-location1-rose">0</td>
+      </tr>
+      <tr>
+        <td>Tulia</td>
+        <td id="inventory-location2-chardonnay">0</td>
+        <td id="inventory-location2-rose">0</td>
+      </tr>
+      <tr>
+        <td>Beacon</td>
+        <td id="inventory-location3-chardonnay">0</td>
+        <td id="inventory-location3-rose">0</td>
+      </tr>
+      <tr>
+        <td>Prohibition</td>
+        <td id="inventory-location4-chardonnay">0</td>
+        <td id="inventory-location4-rose">0</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Calendar Logs -->
+  <h2>Delivery & Removal Calendar Logs</h2>
+  <div class="calendar-nav">
+    <button onclick="showCalendar('location1')">Ce Soir</button>
+    <button onclick="showCalendar('location2')">Tulia</button>
+    <button onclick="showCalendar('location3')">Beacon</button>
+    <button onclick="showCalendar('location4')">Prohibition</button>
+  </div>
+
+  <div id="calendar-location1" class="calendar-tab active"></div>
+  <div id="calendar-location2" class="calendar-tab"></div>
+  <div id="calendar-location3" class="calendar-tab"></div>
+  <div id="calendar-location4" class="calendar-tab"></div>
+
+  <script>
+    const inventory = {
+      location1: { chardonnay: 0, rose: 0 },
+      location2: { chardonnay: 0, rose: 0 },
+      location3: { chardonnay: 0, rose: 0 },
+      location4: { chardonnay: 0, rose: 0 }
+    };
+
+    const logs = {
+      location1: {},
+      location2: {},
+      location3: {},
+      location4: {}
+    };
+
+    function updateInventory(type) {
+      const loc = document.getElementById(`${type}Location`).value;
+      const prod = document.getElementById(`${type}Product`).value;
+      const cases = parseInt(document.getElementById(`${type}Cases`).value);
+      const date = document.getElementById(`${type}Date`).value;
+
+      if (!logs[loc][date]) logs[loc][date] = [];
+
+      let action = {
+        type: type,
+        product: prod,
+        cases: cases,
+        resulting: null
+      };
+
+      if (type === 'add') {
+        inventory[loc][prod] += cases;
+      } else {
+        inventory[loc][prod] = Math.max(0, inventory[loc][prod] - cases);
+      }
+
+      action.resulting = inventory[loc][prod];
+      logs[loc][date].push(action);
+
+      updateDisplay();
+      renderCalendarLogs(loc);
+      document.getElementById(`${type}Cases`).value = '';
+    }
+
+    function updateDisplay() {
+      for (let loc in inventory) {
+        for (let prod in inventory[loc]) {
+          document.getElementById(`inventory-${loc}-${prod}`).textContent = inventory[loc][prod];
+        }
+      }
+    }
+
+    function renderCalendarLogs(location) {
+      const container = document.getElementById(`calendar-${location}`);
+      container.innerHTML = `<h3>${location.replace("location", "Location ")}</h3>`;
+
+      const dates = Object.keys(logs[location]).sort();
+
+      dates.forEach(date => {
+        const entries = logs[location][date];
+        let html = `<div class="calendar-date">${date}</div>`;
+        entries.forEach(entry => {
+          const verb = entry.type === 'add' ? 'Delivered' : 'Removed';
+          const prodName = entry.product === 'chardonnay' ? 'Chardonnay' : 'Rosé';
+          html += `<div class="log-entry">${verb} ${entry.cases} cases of ${prodName} → Total: ${entry.resulting}</div>`;
+        });
+        container.innerHTML += html;
+      });
+    }
+
+    function showTab(id) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    function showCalendar(location) {
+      document.querySelectorAll('.calendar-tab').forEach(el => el.classList.remove('active'));
+      document.getElementById(`calendar-${location}`).classList.add('active');
+    }
+  </script>
+
+</body>
+</html>
