@@ -2,187 +2,174 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Heist Inventory Tracker</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: auto; }
-    h1 { text-align: center; }
-    h2 { margin-top: 30px; }
-    .section { margin-bottom: 30px; }
-    .inventory-summary { display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-around; }
+    body { font-family: Arial, sans-serif; padding: 20px; }
     .inventory-card {
-      background: #f5f5f5;
+      display: inline-block;
+      margin: 10px;
       padding: 15px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
+      border-radius: 10px;
+      background-color: #f0f0f0;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       width: 200px;
-      text-align: center;
     }
-    .log-entry {
-      background: #f9f9f9;
-      padding: 8px;
-      margin: 5px 0;
-      border-left: 4px solid #007bff;
-    }
-    details { margin-bottom: 15px; }
+    .log-entry { margin: 5px 0; padding: 5px; }
+    .log-add { border-left: 5px solid green; background-color: #eaffea; }
+    .log-remove { border-left: 5px solid red; background-color: #ffeaea; }
+    .store-section { margin-top: 20px; }
+    details summary { font-weight: bold; margin-top: 10px; }
   </style>
 </head>
 <body>
   <h1>Heist Inventory Tracker</h1>
 
-  <div class="section">
-    <h2>Current Inventory</h2>
-    <div class="inventory-summary" id="inventorySummary">
-      <!-- Inventory cards will appear here -->
-    </div>
-  </div>
+  <h2>Current Inventory</h2>
+  <div id="inventoryDisplay"></div>
 
-  <div class="section">
-    <h2>Add Inventory</h2>
-    <input type="date" id="addDate" />
-    <select id="addLocation">
-      <option value="Prohibition">Prohibition</option>
-      <option value="Tulia">Tulia</option>
-      <option value="Beacon">Beacon</option>
-      <option value="Ce Soir">Ce Soir</option>
-    </select>
-    <select id="addProduct">
-      <option value="Chardonnay">Chardonnay</option>
-      <option value="Rose">Rosé</option>
-    </select>
-    <input type="number" id="addCases" placeholder="Cases to add" />
-    <button onclick="updateInventory('add')">Add</button>
-  </div>
+  <h2>Add Inventory</h2>
+  <input type="date" id="addDate" />
+  <select id="addLocation">
+    <option value="store1">Tulia</option>
+    <option value="store2">Prohibition</option>
+    <option value="store3">Bar Raval</option>
+    <option value="store4">Paradise Grapevine</option>
+  </select>
+  <select id="addProduct">
+    <option value="Chardonnay">Chardonnay</option>
+    <option value="Rosé">Rosé</option>
+  </select>
+  <input type="number" id="addAmount" placeholder="Cases to add" />
+  <button onclick="updateInventory('add')">Add</button>
 
-  <div class="section">
-    <h2>Remove Inventory</h2>
-    <input type="date" id="removeDate" />
-    <select id="removeLocation">
-      <option value="Prohibition">Prohibition</option>
-      <option value="Tulia">Tulia</option>
-      <option value="Beacon">Beacon</option>
-      <option value="Ce Soir">Ce Soir</option>
-    </select>
-    <select id="removeProduct">
-      <option value="Chardonnay">Chardonnay</option>
-      <option value="Rose">Rosé</option>
-    </select>
-    <input type="number" id="removeCases" placeholder="Cases to remove" />
-    <button onclick="updateInventory('remove')">Remove</button>
-  </div>
+  <h2>Remove Inventory</h2>
+  <input type="date" id="removeDate" />
+  <select id="removeLocation">
+    <option value="store1">Tulia</option>
+    <option value="store2">Prohibition</option>
+    <option value="store3">Bar Raval</option>
+    <option value="store4">Paradise Grapevine</option>
+  </select>
+  <select id="removeProduct">
+    <option value="Chardonnay">Chardonnay</option>
+    <option value="Rosé">Rosé</option>
+  </select>
+  <input type="number" id="removeAmount" placeholder="Cases to remove" />
+  <button onclick="updateInventory('remove')">Remove</button>
 
-  <div class="section">
-    <h2>Inventory Logs by Location</h2>
-    <div id="logOutput">Loading logs...</div>
-  </div>
+  <h2>Inventory Logs by Location</h2>
+  <div id="logsDisplay"></div>
 
-  <!-- Firebase and Script -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-    import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
     const firebaseConfig = {
-      apiKey: "AIzaSyARAt4sNCfNTxGha0OtOCavebC-AdbHx8",
+      apiKey: "AIzaSyC2Xz4JjOQqqTzKJGPn0NVmMC8j6G7Lj8I",
       authDomain: "heist-inventory-tracker.firebaseapp.com",
       databaseURL: "https://heist-inventory-tracker-default-rtdb.firebaseio.com",
       projectId: "heist-inventory-tracker",
       storageBucket: "heist-inventory-tracker.appspot.com",
-      messagingSenderId: "106905886803",
-      appId: "1:106905886803:web:a4ca869705130d13a9a6a6"
+      messagingSenderId: "290748860726",
+      appId: "1:290748860726:web:f1782ae61f11833f3cbd40"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    async function updateInventory(type) {
-      const date = document.getElementById(`${type}Date`).value;
-      const location = document.getElementById(`${type}Location`).value;
-      const product = document.getElementById(`${type}Product`).value;
-      const cases = parseInt(document.getElementById(`${type}Cases`).value);
+    const locationNames = {
+      store1: "Tulia",
+      store2: "Prohibition",
+      store3: "Bar Raval",
+      store4: "Paradise Grapevine"
+    };
 
-      if (!date || isNaN(cases)) {
-        alert("Please fill in all fields.");
-        return;
+    async function fetchData() {
+      const snapshot = await get(ref(db));
+      if (!snapshot.exists()) return;
+      const data = snapshot.val();
+      displayInventory(data.inventory || {});
+      displayLogs(data.logs || {});
+    }
+
+    function displayInventory(inventoryData) {
+      const container = document.getElementById("inventoryDisplay");
+      container.innerHTML = "";
+      for (const location in inventoryData) {
+        const store = inventoryData[location];
+        const card = document.createElement("div");
+        card.className = "inventory-card";
+        card.innerHTML = `<strong>${locationNames[location] || location}</strong><br>
+                          Chardonnay: ${store.Chardonnay || 0}<br>
+                          Rosé: ${store["Rosé"] || 0}`;
+        container.appendChild(card);
+      }
+    }
+
+    function displayLogs(logsData) {
+      const container = document.getElementById("logsDisplay");
+      container.innerHTML = "";
+      for (const location in logsData) {
+        const section = document.createElement("div");
+        section.className = "store-section";
+        const details = document.createElement("details");
+        details.open = true;
+        const summary = document.createElement("summary");
+        summary.textContent = locationNames[location] || location;
+        details.appendChild(summary);
+
+        const dates = Object.keys(logsData[location]).sort().reverse();
+        for (const date of dates) {
+          const entryDiv = document.createElement("div");
+          entryDiv.innerHTML = `<strong>${date}</strong><br>`;
+          for (const log of logsData[location][date]) {
+            const logEl = document.createElement("div");
+            logEl.className = `log-entry log-${log.type}`;
+            logEl.innerHTML = `${log.type.toUpperCase()} ${log.amount} ${log.product}<br>Total: ${log.total}`;
+            entryDiv.appendChild(logEl);
+          }
+          details.appendChild(entryDiv);
+        }
+        section.appendChild(details);
+        container.appendChild(section);
+      }
+    }
+
+    async function updateInventory(action) {
+      const date = document.getElementById(`${action}Date`).value;
+      const location = document.getElementById(`${action}Location`).value;
+      const product = document.getElementById(`${action}Product`).value;
+      const amount = parseInt(document.getElementById(`${action}Amount`).value);
+      if (!date || !location || !product || isNaN(amount)) return;
+
+      const snapshot = await get(ref(db));
+      const data = snapshot.exists() ? snapshot.val() : { inventory: {}, logs: {} };
+
+      if (!data.inventory[location]) data.inventory[location] = {};
+      if (!data.inventory[location][product]) data.inventory[location][product] = 0;
+
+      if (action === "add") {
+        data.inventory[location][product] += amount;
+      } else {
+        data.inventory[location][product] = Math.max(0, data.inventory[location][product] - amount);
       }
 
-      const invRef = ref(db, `inventory/${location}/${product}`);
-      const logRef = ref(db, `logs/${location}/${date}/${Date.now()}`);
+      if (!data.logs[location]) data.logs[location] = {};
+      if (!data.logs[location][date]) data.logs[location][date] = [];
 
-      const snapshot = await get(invRef);
-      const current = snapshot.exists() ? snapshot.val() : 0;
-      const newTotal = type === "add" ? current + cases : current - cases;
-
-      await set(invRef, newTotal);
-      await set(logRef, {
-        date,
-        action: type,
+      data.logs[location][date].push({
+        type: action,
         product,
-        amount: cases,
-        resultingTotal: newTotal
+        amount,
+        total: data.inventory[location][product]
       });
 
-      alert(`Successfully ${type === 'add' ? 'added' : 'removed'} inventory.`);
-      loadInventory();
-      loadLogs();
+      await set(ref(db), data);
+      fetchData();
     }
 
-    function loadInventory() {
-      const summaryDiv = document.getElementById("inventorySummary");
-      summaryDiv.innerHTML = "";
-
-      const invRef = ref(db, "inventory");
-      onValue(invRef, (snapshot) => {
-        const data = snapshot.val();
-        summaryDiv.innerHTML = "";
-
-        if (data) {
-          Object.entries(data).forEach(([location, products]) => {
-            let card = `<div class="inventory-card"><strong>${location}</strong><br>`;
-            card += `Chardonnay: ${products.Chardonnay ?? 0}<br>`;
-            card += `Rosé: ${products.Rose ?? 0}</div>`;
-            summaryDiv.innerHTML += card;
-          });
-        }
-      });
-    }
-
-    function loadLogs() {
-      const output = document.getElementById("logOutput");
-      const logsRef = ref(db, "logs");
-
-      onValue(logsRef, (snapshot) => {
-        const data = snapshot.val();
-        output.innerHTML = "";
-
-        if (!data) {
-          output.textContent = "No logs found.";
-          return;
-        }
-
-        Object.entries(data).forEach(([location, dates]) => {
-          let details = `<details><summary><strong>${location}</strong></summary>`;
-          Object.entries(dates).sort().forEach(([date, entries]) => {
-            details += `<p><strong>${date}</strong></p>`;
-            Object.values(entries).forEach(entry => {
-              const style = entry.action === 'add' ? 'color: green;' : 'color: red;';
-              details += `<div class="log-entry" style="${style}">
-                ${entry.action.toUpperCase()} ${entry.amount} ${entry.product}<br/>
-                Total: ${entry.resultingTotal}
-              </div>`;
-            });
-          });
-          details += `</details>`;
-          output.innerHTML += details;
-        });
-      });
-    }
-
-    window.addEventListener("DOMContentLoaded", () => {
-      loadInventory();
-      loadLogs();
-    });
-
-    window.updateInventory = updateInventory;
+    fetchData();
   </script>
 </body>
 </html>
