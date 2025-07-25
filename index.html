@@ -3,25 +3,48 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Heist Inventory Tracker</title>
+  <title>Wine Inventory Tracker</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: auto; }
+    h1 { text-align: center; }
     h2 { margin-top: 30px; }
-    .section { margin-bottom: 20px; }
-    .log { background: #f4f4f4; padding: 10px; margin: 10px 0; border: 1px solid #ccc; }
+    .section { margin-bottom: 30px; }
+    .inventory-summary { display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-around; }
+    .inventory-card {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      width: 200px;
+      text-align: center;
+    }
+    .log-entry {
+      background: #f9f9f9;
+      padding: 8px;
+      margin: 5px 0;
+      border-left: 4px solid #007bff;
+    }
+    details { margin-bottom: 15px; }
   </style>
 </head>
 <body>
-  <h1>Heist Inventory Tracker</h1>
+  <h1>Wine Inventory Tracker</h1>
+
+  <div class="section">
+    <h2>Current Inventory</h2>
+    <div class="inventory-summary" id="inventorySummary">
+      <!-- Inventory cards will appear here -->
+    </div>
+  </div>
 
   <div class="section">
     <h2>Add Inventory</h2>
     <input type="date" id="addDate" />
     <select id="addLocation">
-      <option value="Store1">Prohibition</option>
-      <option value="Store2">Tulia</option>
-      <option value="Store3">Beacon</option>
-      <option value="Store4">Ce Soir</option>
+      <option value="Store1">Store 1</option>
+      <option value="Store2">Store 2</option>
+      <option value="Store3">Store 3</option>
+      <option value="Store4">Store 4</option>
     </select>
     <select id="addProduct">
       <option value="Chardonnay">Chardonnay</option>
@@ -35,10 +58,10 @@
     <h2>Remove Inventory</h2>
     <input type="date" id="removeDate" />
     <select id="removeLocation">
-      <option value="Store1">Prohibition</option>
-      <option value="Store2">Tulia</option>
-      <option value="Store3">Beacon</option>
-      <option value="Store4">Ce Soir</option>
+      <option value="Store1">Store 1</option>
+      <option value="Store2">Store 2</option>
+      <option value="Store3">Store 3</option>
+      <option value="Store4">Store 4</option>
     </select>
     <select id="removeProduct">
       <option value="Chardonnay">Chardonnay</option>
@@ -49,14 +72,14 @@
   </div>
 
   <div class="section">
-    <h2>Logs</h2>
+    <h2>Inventory Logs by Location</h2>
     <div id="logOutput">Loading logs...</div>
   </div>
 
-  <!-- Firebase & Logic Script -->
+  <!-- Firebase and Script -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-    import { getDatabase, ref, get, set, onValue, update } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+    import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyARAt4sNCfNTxGha0OtOCavebC-AdbHx8",
@@ -71,19 +94,19 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    window.updateInventory = async function(type) {
+    async function updateInventory(type) {
       const date = document.getElementById(`${type}Date`).value;
-      const loc = document.getElementById(`${type}Location`).value;
-      const prod = document.getElementById(`${type}Product`).value;
-      const cases = parseInt(document.getElementById(`${type}Cases`).value, 10);
+      const location = document.getElementById(`${type}Location`).value;
+      const product = document.getElementById(`${type}Product`).value;
+      const cases = parseInt(document.getElementById(`${type}Cases`).value);
 
       if (!date || isNaN(cases)) {
-        alert("Please enter a valid date and number of cases.");
+        alert("Please fill in all fields.");
         return;
       }
 
-      const invRef = ref(db, `inventory/${loc}/${prod}`);
-      const logRef = ref(db, `logs/${loc}/${date}/${Date.now()}`);
+      const invRef = ref(db, `inventory/${location}/${product}`);
+      const logRef = ref(db, `logs/${location}/${date}/${Date.now()}`);
 
       const snapshot = await get(invRef);
       const current = snapshot.exists() ? snapshot.val() : 0;
@@ -93,44 +116,73 @@
       await set(logRef, {
         date,
         action: type,
-        product: prod,
+        product,
         amount: cases,
         resultingTotal: newTotal
       });
 
-      alert(`Inventory ${type === 'add' ? 'added to' : 'removed from'} ${loc} (${prod}). New total: ${newTotal}`);
+      alert(`Successfully ${type === 'add' ? 'added' : 'removed'} inventory.`);
+      loadInventory();
       loadLogs();
     }
 
-    function loadLogs() {
-      const logOutput = document.getElementById("logOutput");
-      logOutput.innerHTML = "Loading...";
+    function loadInventory() {
+      const summaryDiv = document.getElementById("inventorySummary");
+      summaryDiv.innerHTML = "";
 
-      const logsRef = ref(db, 'logs');
-      onValue(logsRef, (snapshot) => {
+      const invRef = ref(db, "inventory");
+      onValue(invRef, (snapshot) => {
         const data = snapshot.val();
-        if (!data) {
-          logOutput.innerHTML = "No logs yet.";
-          return;
-        }
+        summaryDiv.innerHTML = "";
 
-        let html = "";
-        Object.entries(data).forEach(([store, dates]) => {
-          html += `<h3>${store}</h3>`;
-          Object.entries(dates).forEach(([date, entries]) => {
-            html += `<strong>${date}</strong><br/>`;
-            Object.values(entries).forEach(entry => {
-              html += `<div class="log">${entry.action.toUpperCase()} ${entry.amount} ${entry.product} → Total: ${entry.resultingTotal}</div>`;
-            });
+        if (data) {
+          Object.entries(data).forEach(([location, products]) => {
+            let card = `<div class="inventory-card"><strong>${location}</strong><br>`;
+            card += `Chardonnay: ${products.Chardonnay ?? 0}<br>`;
+            card += `Rosé: ${products.Rose ?? 0}</div>`;
+            summaryDiv.innerHTML += card;
           });
-        });
-
-        logOutput.innerHTML = html;
+        }
       });
     }
 
-    // Load logs on page load
-    window.addEventListener("DOMContentLoaded", loadLogs);
+    function loadLogs() {
+      const output = document.getElementById("logOutput");
+      const logsRef = ref(db, "logs");
+
+      onValue(logsRef, (snapshot) => {
+        const data = snapshot.val();
+        output.innerHTML = "";
+
+        if (!data) {
+          output.textContent = "No logs found.";
+          return;
+        }
+
+        Object.entries(data).forEach(([location, dates]) => {
+          let details = `<details><summary><strong>${location}</strong></summary>`;
+          Object.entries(dates).sort().forEach(([date, entries]) => {
+            details += `<p><strong>${date}</strong></p>`;
+            Object.values(entries).forEach(entry => {
+              const style = entry.action === 'add' ? 'color: green;' : 'color: red;';
+              details += `<div class="log-entry" style="${style}">
+                ${entry.action.toUpperCase()} ${entry.amount} ${entry.product}<br/>
+                Total: ${entry.resultingTotal}
+              </div>`;
+            });
+          });
+          details += `</details>`;
+          output.innerHTML += details;
+        });
+      });
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      loadInventory();
+      loadLogs();
+    });
+
+    window.updateInventory = updateInventory;
   </script>
 </body>
 </html>
