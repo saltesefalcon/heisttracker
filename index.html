@@ -1,30 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Heist Inventory Tracker</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: auto; }
-    h1 { text-align: center; }
-    h2 { margin-top: 30px; }
-    .section { margin-bottom: 30px; }
-    .inventory-summary { display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-around; }
-    .inventory-card {
-      background: #f5f5f5;
-      padding: 15px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      width: 200px;
-      text-align: center;
-    }
-    .log-entry {
-      background: #f9f9f9;
-      padding: 8px;
-      margin: 5px 0;
-      border-left: 4px solid #007bff;
-    }
-    details { margin-bottom: 15px; }
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: auto; padding: 20px; }
+    h1, h2 { text-align: center; }
+    .inventory-summary { display:flex; flex-wrap:wrap; gap:15px; justify-content:center; margin-bottom:30px; }
+    .inventory-card { border:1px solid #ccc; padding:10px; width:180px; background:#f5f5f5; border-radius:6px; text-align:center; }
+    .section { margin-bottom:30px; }
+    .month-nav { text-align:center; margin:10px 0; }
+    .month-btn { padding:5px 10px; margin:0 5px; cursor:pointer; }
+    .log-entry { margin:5px 0; padding:6px; border-left:4px solid #007bff; background:#f9f9f9; }
+    .store-logs { margin-bottom:40px; }
+    .month-section { margin-bottom:20px; }
+    .month-title { font-weight:bold; margin-bottom:5px; }
   </style>
 </head>
 <body>
@@ -32,49 +23,28 @@
 
   <div class="section">
     <h2>Current Inventory</h2>
-    <div class="inventory-summary" id="inventorySummary"></div>
+    <div id="inventorySummary" class="inventory-summary"></div>
   </div>
 
   <div class="section">
-    <h2>Add Inventory</h2>
-    <input type="date" id="addDate" />
-    <select id="addLocation">
-      <option value="Prohibition">Prohibition</option>
-      <option value="Tulia">Tulia</option>
-      <option value="Beacon">Beacon</option>
-      <option value="Ce Soir">Ce Soir</option>
-    </select>
-    <select id="addProduct">
-      <option value="Chardonnay">Chardonnay</option>
-      <option value="Rose">Rosé</option>
-    </select>
-    <input type="number" id="addCases" placeholder="Cases to add" />
-    <button onclick="updateInventory('add')">Add</button>
+    <h2>Add / Remove Inventory</h2>
+    <div>
+      <input type="date" id="transDate">
+      <select id="transLocation">
+        <option>Prohibition</option><option>Tulia</option><option>Beacon</option><option>Ce Soir</option>
+      </select>
+      <select id="transProduct"><option>Chardonnay</option><option>Rose</option></select>
+      <input type="number" id="transCases" placeholder="Cases">
+      <button id="addBtn">Add</button>
+      <button id="removeBtn">Remove</button>
+    </div>
   </div>
 
   <div class="section">
-    <h2>Remove Inventory</h2>
-    <input type="date" id="removeDate" />
-    <select id="removeLocation">
-      <option value="Prohibition">Prohibition</option>
-      <option value="Tulia">Tulia</option>
-      <option value="Beacon">Beacon</option>
-      <option value="Ce Soir">Ce Soir</option>
-    </select>
-    <select id="removeProduct">
-      <option value="Chardonnay">Chardonnay</option>
-      <option value="Rose">Rosé</option>
-    </select>
-    <input type="number" id="removeCases" placeholder="Cases to remove" />
-    <button onclick="updateInventory('remove')">Remove</button>
+    <h2>Inventory Logs by Store (Monthly)</h2>
+    <div id="logsContainer"></div>
   </div>
 
-  <div class="section">
-    <h2>Inventory Logs by Location</h2>
-    <div id="logOutput">Loading logs...</div>
-  </div>
-
-  <!-- Firebase and Script -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
     import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
@@ -88,99 +58,111 @@
       messagingSenderId: "106905886803",
       appId: "1:106905886803:web:a4ca869705130d13a9a6a6"
     };
-
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    async function updateInventory(type) {
-      const date = document.getElementById(`${type}Date`).value;
-      const location = document.getElementById(`${type}Location`).value;
-      const product = document.getElementById(`${type}Product`).value;
-      const cases = parseInt(document.getElementById(`${type}Cases`).value);
+    document.getElementById("addBtn").onclick = () => trans('add');
+    document.getElementById("removeBtn").onclick = () => trans('remove');
 
-      if (!date || isNaN(cases)) {
-        alert("Please fill in all fields.");
-        return;
-      }
+    const storeList = ["Prohibition","Tulia","Beacon","Ce Soir"];
+    const today = new Date();
+    let viewYear = today.getFullYear(), viewMonth = today.getMonth(); // current month index 0–11
 
+    async function trans(type) {
+      const date = document.getElementById("transDate").value;
+      const location = document.getElementById("transLocation").value;
+      const product = document.getElementById("transProduct").value;
+      const cases = parseInt(document.getElementById("transCases").value,10);
+      if (!date || !cases) return alert("Fill date and cases");
       const invRef = ref(db, `inventory/${location}/${product}`);
       const logRef = ref(db, `logs/${location}/${date}/${Date.now()}`);
-
       const snapshot = await get(invRef);
       const current = snapshot.exists() ? snapshot.val() : 0;
-      const newTotal = type === "add" ? current + cases : current - cases;
-
+      const newTotal = type==='add'?current+cases:Math.max(0,current-cases);
       await set(invRef, newTotal);
-      await set(logRef, {
-        date,
-        action: type,
-        product,
-        amount: cases,
-        resultingTotal: newTotal
-      });
-
-      alert(`Successfully ${type === 'add' ? 'added' : 'removed'} inventory.`);
+      await set(logRef, { date, action:type, product, cases, total:newTotal });
       loadInventory();
-      loadLogs();
     }
 
     function loadInventory() {
-      const summaryDiv = document.getElementById("inventorySummary");
-      summaryDiv.innerHTML = "";
-
-      const invRef = ref(db, "inventory");
-      onValue(invRef, (snapshot) => {
-        const data = snapshot.val();
-        summaryDiv.innerHTML = "";
-
-        if (data) {
-          Object.entries(data).forEach(([location, products]) => {
-            let card = `<div class="inventory-card"><strong>${location}</strong><br>`;
-            card += `Chardonnay: ${products.Chardonnay ?? 0}<br>`;
-            card += `Rosé: ${products.Rose ?? 0}</div>`;
-            summaryDiv.innerHTML += card;
-          });
-        }
-      });
-    }
-
-    function loadLogs() {
-      const output = document.getElementById("logOutput");
-      const logsRef = ref(db, "logs");
-
-      onValue(logsRef, (snapshot) => {
-        const data = snapshot.val();
-        output.innerHTML = "";
-
-        if (!data) {
-          output.textContent = "No logs found.";
-          return;
-        }
-
-        Object.entries(data).forEach(([location, dates]) => {
-          let details = `<details><summary><strong>${location}</strong></summary>`;
-          Object.entries(dates).sort().forEach(([date, entries]) => {
-            details += `<p><strong>${date}</strong></p>`;
-            Object.values(entries).forEach(entry => {
-              const style = entry.action === 'add' ? 'color: green;' : 'color: red;';
-              details += `<div class="log-entry" style="${style}">
-                ${entry.action.toUpperCase()} ${entry.amount} ${entry.product}<br/>
-                Total: ${entry.resultingTotal}
-              </div>`;
-            });
-          });
-          details += `</details>`;
-          output.innerHTML += details;
+      const summary = document.getElementById("inventorySummary");
+      summary.innerHTML = '';
+      onValue(ref(db,"inventory"), snap => {
+        const data = snap.val()||{};
+        summary.innerHTML = '';
+        storeList.forEach(store => {
+          const inv = data[store]||{};
+          summary.innerHTML += `
+            <div class="inventory-card">
+              <strong>${store}</strong><br>
+              Chardonnay: ${inv.Chardonnay||0}<br>
+              Rosé: ${inv.Rose||0}
+            </div>`;
         });
       });
     }
 
-    window.addEventListener("DOMContentLoaded", () => {
+    function loadLogs() {
+      onValue(ref(db,"logs"), snap => {
+        const data = snap.val()||{};
+        const container = document.getElementById("logsContainer");
+        container.innerHTML = '';
+        storeList.forEach(store => {
+          const stLogs = data[store]||{};
+          const storeDiv = document.createElement("div");
+          storeDiv.className = 'store-logs';
+          storeDiv.innerHTML = `<h3>${store}</h3>
+            <div class="month-nav">
+              <button class="month-btn" onclick="changeMonth(-1,'${store}')">←</button>
+              <span id="label-${store}"></span>
+              <button class="month-btn" onclick="changeMonth(1,'${store}')">→</button>
+            </div>
+            <div id="logs-${store}"></div>`;
+          container.appendChild(storeDiv);
+          renderMonth(store);
+        });
+      });
+    }
+
+    window.changeMonth = (dir, store) => {
+      viewMonth = (viewMonth + dir + 12)%12;
+      if (dir===1 && viewMonth===0) viewYear++;
+      if (dir===-1 && viewMonth===11) viewYear--;
+      renderMonth(store);
+    };
+
+    function renderMonth(store) {
+      const monthName = new Date(viewYear, viewMonth).toLocaleString('default',{month:'long'});
+      document.getElementById(`label-${store}`).textContent = `${monthName} ${viewYear}`;
+      const logsDiv = document.getElementById(`logs-${store}`);
+      logsDiv.innerHTML = '';
+      onValue(ref(db,`logs/${store}`), snap => {
+        const dates = snap.val()||{};
+        Object.entries(dates)
+          .filter(([d]) => {
+            const dt = new Date(d);
+            return dt.getFullYear()===viewYear && dt.getMonth()===viewMonth;
+          })
+          .sort((a,b)=>a[0].localeCompare(b[0]))
+          .forEach(([d, entries]) => {
+            const dayList = document.createElement("div");
+            dayList.innerHTML = `<div class="month-title">${d}</div>`;
+            Object.values(entries).forEach(e => {
+              const div = document.createElement("div");
+              div.className = 'log-entry';
+              div.style.color = e.action==='add'?'green':'red';
+              div.textContent = `${e.action.toUpperCase()} ${e.cases} ${e.product} → Total: ${e.total}`;
+              dayList.appendChild(div);
+            });
+            logsDiv.appendChild(dayList);
+          });
+      });
+    }
+
+    window.addEventListener("DOMContentLoaded",()=>{
       loadInventory();
       loadLogs();
     });
-
-    window.updateInventory = updateInventory;
   </script>
 </body>
 </html>
