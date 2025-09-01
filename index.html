@@ -123,14 +123,15 @@
 
     // ---------- Firebase ----------
     const firebaseConfig = {
-      apiKey: "AIzaSyARAt4sNCfNTxGha0OtOCavebC-AdbHx8",
-      authDomain: "heist-inventory-tracker.firebaseapp.com",
-      databaseURL: "https://heist-inventory-tracker-default-rtdb.firebaseio.com",
-      projectId: "heist-inventory-tracker",
-      storageBucket: "heist-inventory-tracker.appspot.com",
-      messagingSenderId: "106905886803",
-      appId: "1:106905886803:web:a4ca869705130d13a9a6a6"
-    };
+  apiKey: "AIzaSyARAt4sNCfNTcXghaOot0CavebC-AdbLx8",
+  authDomain: "heist-inventory-tracker.firebaseapp.com",
+  databaseURL: "https://heist-inventory-tracker-default-rtdb.firebaseio.com",
+  projectId: "heist-inventory-tracker",
+  storageBucket: "heist-inventory-tracker.firebasestorage.app",
+  messagingSenderId: "106905886803",
+  appId: "1:106905886803:web:a4ca869705130d13a9a6a6"
+};
+
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const auth = getAuth(app);
