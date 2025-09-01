@@ -2,224 +2,336 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Heist Inventory Tracker</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: auto; }
+    :root {
+      --card-bg:#f5f5f5;
+      --muted:#888;
+      --ok:#2e7d32;
+      --bad:#c62828;
+      --primary:#007bff;
+    }
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: auto; padding: 20px; }
     h1, h2 { text-align: center; }
-    .section { margin-bottom: 30px; }
+
+    /* Top bar */
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; }
+    .auth-pill { font-size:.9rem; color:#333; }
+    .auth-pill small { color: var(--muted); }
+    .btn { padding:6px 12px; border:1px solid #ccc; background:#fff; border-radius:6px; cursor:pointer; }
+    .btn.primary { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .btn.danger { background:var(--bad); color:#fff; border-color:var(--bad); }
+    .btn[disabled] { opacity:.5; cursor:not-allowed; }
+
     .inventory-summary { display:flex; flex-wrap:wrap; gap:15px; justify-content:center; margin-bottom:30px; }
-    .inventory-card { border:1px solid #ccc; padding:10px; width:180px; background:#f5f5f5; border-radius:6px; text-align:center; }
+    .inventory-card { border:1px solid #ccc; padding:10px; width:180px; background:var(--card-bg); border-radius:6px; text-align:center; }
+    .section { margin-bottom:30px; }
     .month-nav { text-align:center; margin:10px 0; }
     .month-btn { padding:5px 10px; margin:0 5px; cursor:pointer; }
-    .log-entry { margin:5px 0; padding:6px; border-left:4px solid #007bff; background:#f9f9f9; }
+    .log-entry { margin:5px 0; padding:6px; border-left:4px solid var(--primary); background:#f9f9f9; }
     .store-logs { margin-bottom:40px; }
-    .month-section { margin-bottom:20px; }
-    .month-title { font-weight:bold; margin-bottom:5px; }
-    /* Login form */
-    #loginDiv { text-align: center; margin-top: 50px; }
-    #loginDiv input { margin: 5px; padding: 8px; }
-    #loginDiv button { padding: 8px 15px; margin-top: 10px; }
-    #appDiv { display: none; }
+    .month-title { font-weight:bold; margin:8px 0 5px; }
+    .controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center; }
+    .controls > * { min-width:140px; }
+
+    /* Auth modal */
+    .modal-backdrop {
+      position:fixed; inset:0; background:rgba(0,0,0,.4);
+      display:none; align-items:center; justify-content:center; z-index:1000;
+    }
+    .modal {
+      background:#fff; width:min(420px, 94vw); border-radius:10px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.2);
+    }
+    .modal h3 { margin:0 0 10px; text-align:center; }
+    .field { display:flex; flex-direction:column; gap:6px; margin:10px 0; }
+    .field input { padding:8px; border:1px solid #ccc; border-radius:6px; }
+    .row { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+    .hint { font-size:.85rem; color:var(--muted); text-align:center; }
   </style>
 </head>
 <body>
+  <div class="topbar">
+    <div class="auth-pill" id="authStatus">
+      <strong>Status:</strong> <span id="authState">Viewer</span> <small>(read-only)</small>
+    </div>
+    <div>
+      <button class="btn" id="openSignInBtn">Sign in</button>
+      <button class="btn danger" id="signOutBtn" style="display:none;">Sign out</button>
+    </div>
+  </div>
+
   <h1>Heist Inventory Tracker</h1>
 
-  <!-- Login UI -->
-  <div id="loginDiv">
-    <h2>Login</h2>
-    <input type="email" id="loginEmail" placeholder="Email"><br>
-    <input type="password" id="loginPassword" placeholder="Password"><br>
-    <button id="loginBtn">Login</button>
-    <p id="loginMessage" style="color:red;"></p>
+  <div class="section">
+    <h2>Current Inventory</h2>
+    <div id="inventorySummary" class="inventory-summary"></div>
   </div>
 
-  <!-- App UI -->
-  <div id="appDiv">
-    <div class="section">
-      <h2>Current Inventory</h2>
-      <div class="inventory-summary" id="inventorySummary"></div>
+  <div class="section">
+    <h2>Add / Remove Inventory</h2>
+    <div class="controls" title="Sign in to make changes">
+      <input type="date" id="transDate" />
+      <select id="transLocation">
+        <option>Prohibition</option><option>Tulia</option><option>Beacon</option><option>Ce Soir</option>
+      </select>
+      <select id="transProduct">
+        <option>Chardonnay</option>
+        <option>Rose</option>
+      </select>
+      <input type="number" id="transCases" placeholder="Cases" min="1" step="1" />
+      <button id="addBtn" class="btn primary">Add</button>
+      <button id="removeBtn" class="btn">Remove</button>
     </div>
+    <div class="hint">Signed out users can browse data but cannot add/remove inventory.</div>
+  </div>
 
-    <div class="section">
-      <h2>Add / Remove Inventory</h2>
-      <div>
-        <input type="date" id="transDate">
-        <select id="transLocation">
-          <option>Prohibition</option><option>Tulia</option><option>Beacon</option><option>Ce Soir</option>
-        </select>
-        <select id="transProduct"><option>Chardonnay</option><option>Rose</option></select>
-        <input type="number" id="transCases" placeholder="Cases">
-        <button id="addBtn">Add</button>
-        <button id="removeBtn">Remove</button>
+  <div class="section">
+    <h2>Inventory Logs by Store (Monthly)</h2>
+    <div id="logsContainer"></div>
+  </div>
+
+  <!-- Sign-in Modal -->
+  <div class="modal-backdrop" id="signinModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="signinTitle">
+      <h3 id="signinTitle">Sign in</h3>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" placeholder="you@example.com" />
       </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+      </div>
+      <div class="row">
+        <button class="btn" id="cancelSignInBtn">Cancel</button>
+        <button class="btn primary" id="confirmSignInBtn">Sign in</button>
+      </div>
+      <p class="hint">Use an account you’ve added in Firebase Authentication (Email/Password).</p>
     </div>
-
-    <div class="section">
-      <h2>Inventory Logs by Store (Monthly)</h2>
-      <div id="logsContainer"></div>
-    </div>
-
-    <button id="logoutBtn">Logout</button>
   </div>
 
-  <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-    import { 
-      getDatabase, ref, get, set, onValue 
-    } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+    import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
     import {
-      getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
+      getAuth,
+      onAuthStateChanged,
+      signInWithEmailAndPassword,
+      signOut
     } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
 
+    // ---------- Firebase ----------
     const firebaseConfig = {
-      apiKey: "AIzaSyDZaAcP44gm7aAM2o6ZfVjEJKvEFLQic8o",
-      authDomain: "heist-inventory.firebaseapp.com",
-      databaseURL: "https://heist-inventory-default-rtdb.firebaseio.com",
-      projectId: "heist-inventory",
-      storageBucket: "heist-inventory.appspot.com",
+      apiKey: "AIzaSyARAt4sNCfNTxGha0OtOCavebC-AdbHx8",
+      authDomain: "heist-inventory-tracker.firebaseapp.com",
+      databaseURL: "https://heist-inventory-tracker-default-rtdb.firebaseio.com",
+      projectId: "heist-inventory-tracker",
+      storageBucket: "heist-inventory-tracker.appspot.com",
       messagingSenderId: "106905886803",
       appId: "1:106905886803:web:a4ca869705130d13a9a6a6"
     };
-
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const auth = getAuth(app);
 
+    // ---------- State ----------
     const storeList = ["Prohibition","Tulia","Beacon","Ce Soir"];
     const today = new Date();
-    let viewYear = today.getFullYear(), viewMonth = today.getMonth();
+    let viewYear = today.getFullYear();
+    let viewMonth = today.getMonth(); // 0–11
+    let inventoryData = {};
+    let logsData = {};
+    let isAuthed = false;
 
-    // ===== AUTH HANDLING =====
-    const loginDiv = document.getElementById("loginDiv");
-    const appDiv = document.getElementById("appDiv");
-    const loginBtn = document.getElementById("loginBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const loginMessage = document.getElementById("loginMessage");
+    // ---------- DOM helpers ----------
+    const $ = (id) => document.getElementById(id);
+    const pad = (n) => String(n).padStart(2,"0");
+    const toISODate = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 
-    loginBtn.onclick = async () => {
-      const email = document.getElementById("loginEmail").value;
-      const pass = document.getElementById("loginPassword").value;
+    function setDefaultDate() {
+      const el = $("transDate");
+      if (!el.value) el.value = toISODate(new Date());
+    }
+
+    // ---------- Auth UI ----------
+    function updateAuthUI(user) {
+      isAuthed = !!user;
+      $("authState").textContent = isAuthed ? "Editor" : "Viewer";
+      $("authStatus").querySelector("small").textContent = isAuthed ? "(can edit)" : "(read-only)";
+      $("openSignInBtn").style.display = isAuthed ? "none" : "inline-block";
+      $("signOutBtn").style.display = isAuthed ? "inline-block" : "none";
+
+      // Gate editing controls
+      const disable = !isAuthed;
+      $("transDate").disabled = disable;
+      $("transLocation").disabled = disable;
+      $("transProduct").disabled = disable;
+      $("transCases").disabled = disable;
+      $("addBtn").disabled = disable;
+      $("removeBtn").disabled = disable;
+    }
+
+    function openSignIn() { $("signinModal").style.display = "flex"; }
+    function closeSignIn() { $("signinModal").style.display = "none"; }
+
+    $("openSignInBtn").addEventListener("click", openSignIn);
+    $("cancelSignInBtn").addEventListener("click", closeSignIn);
+    $("confirmSignInBtn").addEventListener("click", async () => {
+      const email = $("email").value.trim();
+      const password = $("password").value;
+      if (!email || !password) { alert("Enter email and password"); return; }
       try {
-        await signInWithEmailAndPassword(auth, email, pass);
+        await signInWithEmailAndPassword(auth, email, password);
+        $("email").value = ""; $("password").value = "";
+        closeSignIn();
       } catch (err) {
-        loginMessage.textContent = err.message;
-      }
-    };
-
-    logoutBtn.onclick = async () => {
-      await signOut(auth);
-    };
-
-    onAuthStateChanged(auth, user => {
-      if (user) {
-        loginDiv.style.display = "none";
-        appDiv.style.display = "block";
-        loadInventory();
-        loadLogs();
-      } else {
-        loginDiv.style.display = "block";
-        appDiv.style.display = "none";
+        alert(err.message || "Sign in failed");
       }
     });
 
-    // ===== INVENTORY FUNCTIONS =====
-    document.getElementById("addBtn").onclick = () => trans('add');
-    document.getElementById("removeBtn").onclick = () => trans('remove');
+    $("signOutBtn").addEventListener("click", async () => {
+      try { await signOut(auth); } catch (e) { alert(e.message || "Sign out failed"); }
+    });
 
-    async function trans(type) {
-      const date = document.getElementById("transDate").value;
-      const location = document.getElementById("transLocation").value;
-      const product = document.getElementById("transProduct").value;
-      const cases = parseInt(document.getElementById("transCases").value,10);
-      if (!date || !cases) return alert("Fill date and cases");
+    onAuthStateChanged(auth, (user) => {
+      updateAuthUI(user);
+    });
+
+    // ---------- Transactions (guarded by auth) ----------
+    $("addBtn").onclick = () => handleTrans("add");
+    $("removeBtn").onclick = () => handleTrans("remove");
+
+    async function handleTrans(type) {
+      if (!isAuthed) { alert("Please sign in to make changes."); return; }
+
+      const date = $("transDate").value;
+      const location = $("transLocation").value;
+      const product = $("transProduct").value;
+      const cases = parseInt($("transCases").value, 10);
+
+      if (!date) return alert("Please choose a date.");
+      if (!location) return alert("Please choose a location.");
+      if (!product) return alert("Please choose a product.");
+      if (!Number.isInteger(cases) || cases <= 0) return alert("Enter a positive whole number of cases.");
 
       const invRef = ref(db, `inventory/${location}/${product}`);
       const logRef = ref(db, `logs/${location}/${date}/${Date.now()}`);
 
-      const snapshot = await get(invRef);
-      const current = snapshot.exists() ? snapshot.val() : 0;
-      const newTotal = type==='add'?current+cases:Math.max(0,current-cases);
+      const snap = await get(invRef);
+      const current = snap.exists() ? Number(snap.val()) : 0;
+
+      const newTotal = type === "add" ? current + cases : Math.max(0, current - cases);
 
       await set(invRef, newTotal);
-      await set(logRef, { date, action:type, product, cases, total:newTotal });
+      await set(logRef, { date, action: type, product, cases, total: newTotal });
 
-      loadInventory();
-      loadLogs();
+      $("transCases").value = "";
     }
 
-    function loadInventory() {
-      const summary = document.getElementById("inventorySummary");
-      summary.innerHTML = '';
-      onValue(ref(db,"inventory"), snap => {
-        const data = snap.val()||{};
-        summary.innerHTML = '';
-        storeList.forEach(store => {
-          const inv = data[store]||{};
-          summary.innerHTML += `
-            <div class="inventory-card">
-              <strong>${store}</strong><br>
-              Chardonnay: ${inv.Chardonnay||0}<br>
-              Rosé: ${inv.Rose||0}
-            </div>`;
-        });
+    // ---------- Rendering ----------
+    function renderInventory() {
+      const summary = $("inventorySummary");
+      summary.innerHTML = "";
+      storeList.forEach(store => {
+        const inv = inventoryData[store] || {};
+        summary.innerHTML += `
+          <div class="inventory-card">
+            <strong>${store}</strong><br>
+            Chardonnay: ${Number(inv.Chardonnay || 0)}<br>
+            Rosé: ${Number(inv.Rose || 0)}
+          </div>`;
       });
     }
 
-    function loadLogs() {
-      const container = document.getElementById("logsContainer");
-      container.innerHTML = '';
+    function buildLogsScaffold() {
+      const container = $("logsContainer");
+      container.innerHTML = "";
       storeList.forEach(store => {
         const storeDiv = document.createElement("div");
-        storeDiv.className = 'store-logs';
-        storeDiv.innerHTML = `<h3>${store}</h3>
+        storeDiv.className = "store-logs";
+        storeDiv.innerHTML = `
+          <h3>${store}</h3>
           <div class="month-nav">
-            <button class="month-btn" onclick="changeMonth(-1,'${store}')">←</button>
+            <button class="month-btn" data-dir="-1" data-store="${store}">←</button>
             <span id="label-${store}"></span>
-            <button class="month-btn" onclick="changeMonth(1,'${store}')">→</button>
+            <button class="month-btn" data-dir="1" data-store="${store}">→</button>
           </div>
-          <div id="logs-${store}"></div>`;
+          <div id="logs-${store}"></div>
+        `;
         container.appendChild(storeDiv);
-        renderMonth(store);
+      });
+
+      // Month navigation (sync across all store views)
+      container.addEventListener("click", (e) => {
+        const btn = e.target.closest(".month-btn");
+        if (!btn) return;
+        const dir = Number(btn.dataset.dir);
+        viewMonth = (viewMonth + dir + 12) % 12;
+        if (dir === 1 && viewMonth === 0) viewYear++;
+        if (dir === -1 && viewMonth === 11) viewYear--;
+        renderAllMonths();
       });
     }
 
-    window.changeMonth = (dir, store) => {
-      viewMonth = (viewMonth + dir + 12)%12;
-      if (dir===1 && viewMonth===0) viewYear++;
-      if (dir===-1 && viewMonth===11) viewYear--;
-      renderMonth(store);
-    };
+    function renderAllMonths() {
+      storeList.forEach(store => renderMonthForStore(store));
+    }
 
-    function renderMonth(store) {
-      const monthName = new Date(viewYear, viewMonth).toLocaleString('default',{month:'long'});
-      document.getElementById(`label-${store}`).textContent = `${monthName} ${viewYear}`;
+    function renderMonthForStore(store) {
+      const monthName = new Date(viewYear, viewMonth).toLocaleString("default", { month: "long" });
+      const labelEl = $("label-" + store.replace(/"/g,""));
+      const label = document.getElementById(`label-${store}`);
+      if (label) label.textContent = `${monthName} ${viewYear}`;
+
       const logsDiv = document.getElementById(`logs-${store}`);
-      logsDiv.innerHTML = '';
-      onValue(ref(db,`logs/${store}`), snap => {
-        const dates = snap.val()||{};
-        Object.entries(dates)
-          .filter(([d]) => {
-            const dt = new Date(d);
-            return dt.getFullYear()===viewYear && dt.getMonth()===viewMonth;
-          })
-          .sort((a,b)=>a[0].localeCompare(b[0]))
-          .forEach(([d, entries]) => {
-            const dayList = document.createElement("div");
-            dayList.innerHTML = `<div class="month-title">${d}</div>`;
-            Object.values(entries).forEach(e => {
-              const div = document.createElement("div");
-              div.className = 'log-entry';
-              div.style.color = e.action==='add'?'green':'red';
-              div.textContent = `${e.action.toUpperCase()} ${e.cases} ${e.product} → Total: ${e.total}`;
-              dayList.appendChild(div);
-            });
-            logsDiv.appendChild(dayList);
-          });
+      if (!logsDiv) return;
+      logsDiv.innerHTML = "";
+
+      const dates = logsData[store] || {};
+      const entriesForMonth = Object.entries(dates)
+        .filter(([d]) => {
+          const dt = new Date(d);
+          return dt.getFullYear() === viewYear && dt.getMonth() === viewMonth;
+        })
+        .sort((a,b) => a[0].localeCompare(b[0]));
+
+      entriesForMonth.forEach(([date, entries]) => {
+        const dayBlock = document.createElement("div");
+        dayBlock.innerHTML = `<div class="month-title">${date}</div>`;
+        Object.values(entries).forEach(e => {
+          const row = document.createElement("div");
+          row.className = "log-entry";
+          row.style.color = e.action === "add" ? "var(--ok)" : "var(--bad)";
+          row.textContent = `${e.action.toUpperCase()} ${e.cases} ${e.product} → Total: ${e.total}`;
+          dayBlock.appendChild(row);
+        });
+        logsDiv.appendChild(dayBlock);
       });
     }
+
+    // ---------- Live listeners (one each) ----------
+    function attachListeners() {
+      onValue(ref(db, "inventory"), (snap) => {
+        inventoryData = snap.val() || {};
+        renderInventory();
+      });
+
+      onValue(ref(db, "logs"), (snap) => {
+        logsData = snap.val() || {};
+        if (!$("logsContainer").hasChildNodes()) buildLogsScaffold();
+        renderAllMonths();
+      });
+    }
+
+    // ---------- Init ----------
+    window.addEventListener("DOMContentLoaded", () => {
+      setDefaultDate();
+      updateAuthUI(null); // start as Viewer
+      attachListeners();
+      if (!$("logsContainer").hasChildNodes()) buildLogsScaffold();
+      renderAllMonths();
+    });
   </script>
 </body>
 </html>
