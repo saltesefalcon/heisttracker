@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Heist Inventory Tracker</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: auto; }
+    h1, h2 { text-align: center; }
+    .section { margin-bottom: 30px; }
+    .inventory-summary { display:flex; flex-wrap:wrap; gap:15px; justify-content:center; margin-bottom:30px; }
+    .inventory-card { border:1px solid #ccc; padding:10px; width:180px; background:#f5f5f5; border-radius:6px; text-align:center; }
+    .month-nav { text-align:center; margin:10px 0; }
+    .month-btn { padding:5px 10px; margin:0 5px; cursor:pointer; }
+    .log-entry { margin:5px 0; padding:6px; border-left:4px solid #007bff; background:#f9f9f9; }
+    .store-logs { margin-bottom:40px; }
+    .month-section { margin-bottom:20px; }
+    .month-title { font-weight:bold; margin-bottom:5px; }
+    /* Login form */
+    #loginDiv { text-align: center; margin-top: 50px; }
+    #loginDiv input { margin: 5px; padding: 8px; }
+    #loginDiv button { padding: 8px 15px; margin-top: 10px; }
+    #appDiv { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Heist Inventory Tracker</h1>
+
+  <!-- Login UI -->
+  <div id="loginDiv">
+    <h2>Login</h2>
+    <input type="email" id="loginEmail" placeholder="Email"><br>
+    <input type="password" id="loginPassword" placeholder="Password"><br>
+    <button id="loginBtn">Login</button>
+    <p id="loginMessage" style="color:red;"></p>
+  </div>
+
+  <!-- App UI -->
+  <div id="appDiv">
+    <div class="section">
+      <h2>Current Inventory</h2>
+      <div class="inventory-summary" id="inventorySummary"></div>
+    </div>
+
+    <div class="section">
+      <h2>Add / Remove Inventory</h2>
+      <div>
+        <input type="date" id="transDate">
+        <select id="transLocation">
+          <option>Prohibition</option><option>Tulia</option><option>Beacon</option><option>Ce Soir</option>
+        </select>
+        <select id="transProduct"><option>Chardonnay</option><option>Rose</option></select>
+        <input type="number" id="transCases" placeholder="Cases">
+        <button id="addBtn">Add</button>
+        <button id="removeBtn">Remove</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Inventory Logs by Store (Monthly)</h2>
+      <div id="logsContainer"></div>
+    </div>
+
+    <button id="logoutBtn">Logout</button>
+  </div>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { 
+      getDatabase, ref, get, set, onValue 
+    } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+    import {
+      getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDZaAcP44gm7aAM2o6ZfVjEJKvEFLQic8o",
+      authDomain: "heist-inventory.firebaseapp.com",
+      databaseURL: "https://heist-inventory-default-rtdb.firebaseio.com",
+      projectId: "heist-inventory",
+      storageBucket: "heist-inventory.appspot.com",
+      messagingSenderId: "106905886803",
+      appId: "1:106905886803:web:a4ca869705130d13a9a6a6"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    const storeList = ["Prohibition","Tulia","Beacon","Ce Soir"];
+    const today = new Date();
+    let viewYear = today.getFullYear(), viewMonth = today.getMonth();
+
+    // ===== AUTH HANDLING =====
+    const loginDiv = document.getElementById("loginDiv");
+    const appDiv = document.getElementById("appDiv");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const loginMessage = document.getElementById("loginMessage");
+
+    loginBtn.onclick = async () => {
+      const email = document.getElementById("loginEmail").value;
+      const pass = document.getElementById("loginPassword").value;
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+      } catch (err) {
+        loginMessage.textContent = err.message;
+      }
+    };
+
+    logoutBtn.onclick = async () => {
+      await signOut(auth);
+    };
+
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        loginDiv.style.display = "none";
+        appDiv.style.display = "block";
+        loadInventory();
+        loadLogs();
+      } else {
+        loginDiv.style.display = "block";
+        appDiv.style.display = "none";
+      }
+    });
+
+    // ===== INVENTORY FUNCTIONS =====
+    document.getElementById("addBtn").onclick = () => trans('add');
+    document.getElementById("removeBtn").onclick = () => trans('remove');
+
+    async function trans(type) {
+      const date = document.getElementById("transDate").value;
+      const location = document.getElementById("transLocation").value;
+      const product = document.getElementById("transProduct").value;
+      const cases = parseInt(document.getElementById("transCases").value,10);
+      if (!date || !cases) return alert("Fill date and cases");
+
+      const invRef = ref(db, `inventory/${location}/${product}`);
+      const logRef = ref(db, `logs/${location}/${date}/${Date.now()}`);
+
+      const snapshot = await get(invRef);
+      const current = snapshot.exists() ? snapshot.val() : 0;
+      const newTotal = type==='add'?current+cases:Math.max(0,current-cases);
+
+      await set(invRef, newTotal);
+      await set(logRef, { date, action:type, product, cases, total:newTotal });
+
+      loadInventory();
+      loadLogs();
+    }
+
+    function loadInventory() {
+      const summary = document.getElementById("inventorySummary");
+      summary.innerHTML = '';
+      onValue(ref(db,"inventory"), snap => {
+        const data = snap.val()||{};
+        summary.innerHTML = '';
+        storeList.forEach(store => {
+          const inv = data[store]||{};
+          summary.innerHTML += `
+            <div class="inventory-card">
+              <strong>${store}</strong><br>
+              Chardonnay: ${inv.Chardonnay||0}<br>
+              Rosé: ${inv.Rose||0}
+            </div>`;
+        });
+      });
+    }
+
+    function loadLogs() {
+      const container = document.getElementById("logsContainer");
+      container.innerHTML = '';
+      storeList.forEach(store => {
+        const storeDiv = document.createElement("div");
+        storeDiv.className = 'store-logs';
+        storeDiv.innerHTML = `<h3>${store}</h3>
+          <div class="month-nav">
+            <button class="month-btn" onclick="changeMonth(-1,'${store}')">←</button>
+            <span id="label-${store}"></span>
+            <button class="month-btn" onclick="changeMonth(1,'${store}')">→</button>
+          </div>
+          <div id="logs-${store}"></div>`;
+        container.appendChild(storeDiv);
+        renderMonth(store);
+      });
+    }
+
+    window.changeMonth = (dir, store) => {
+      viewMonth = (viewMonth + dir + 12)%12;
+      if (dir===1 && viewMonth===0) viewYear++;
+      if (dir===-1 && viewMonth===11) viewYear--;
+      renderMonth(store);
+    };
+
+    function renderMonth(store) {
+      const monthName = new Date(viewYear, viewMonth).toLocaleString('default',{month:'long'});
+      document.getElementById(`label-${store}`).textContent = `${monthName} ${viewYear}`;
+      const logsDiv = document.getElementById(`logs-${store}`);
+      logsDiv.innerHTML = '';
+      onValue(ref(db,`logs/${store}`), snap => {
+        const dates = snap.val()||{};
+        Object.entries(dates)
+          .filter(([d]) => {
+            const dt = new Date(d);
+            return dt.getFullYear()===viewYear && dt.getMonth()===viewMonth;
+          })
+          .sort((a,b)=>a[0].localeCompare(b[0]))
+          .forEach(([d, entries]) => {
+            const dayList = document.createElement("div");
+            dayList.innerHTML = `<div class="month-title">${d}</div>`;
+            Object.values(entries).forEach(e => {
+              const div = document.createElement("div");
+              div.className = 'log-entry';
+              div.style.color = e.action==='add'?'green':'red';
+              div.textContent = `${e.action.toUpperCase()} ${e.cases} ${e.product} → Total: ${e.total}`;
+              dayList.appendChild(div);
+            });
+            logsDiv.appendChild(dayList);
+          });
+      });
+    }
+  </script>
+</body>
+</html>
